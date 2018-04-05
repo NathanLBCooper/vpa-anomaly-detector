@@ -175,20 +175,20 @@ class Candle(object):
             self._shape = "SHOOTING_STAR"
         elif large_lower_wick and small_upper_wick:
             self._shape = "HAMMER"
-        # elif upper_wick_length == lower_wick_length:
-        #     self._shape = "LONG_LEGGED_DOJI"
+        elif large_upper_wick and large_lower_wick:
+            self._shape = "LONG_LEGGED_DOJI"
         else:
             self._shape = "AVERAGE_SHAPE"
 
-        print(
-            "upper", upper_wick_length,
-            "lower", lower_wick_length,
-            "spread", self._spread_size,
-            "large_upper", large_upper_wick,
-            "small_upper", small_upper_wick,
-            "large_lower", large_lower_wick,
-            "small_lower", small_lower_wick,
-        )
+        # print(
+        #     "upper", upper_wick_length,
+        #     "lower", lower_wick_length,
+        #     "spread", self._spread_size,
+        #     "large_upper", large_upper_wick,
+        #     "small_upper", small_upper_wick,
+        #     "large_lower", large_lower_wick,
+        #     "small_lower", small_lower_wick,
+        # )
 
     def get_spread_volume_weight(self, volume_stats, spread_stats):
         volume_mean, volume_std = volume_stats
@@ -324,16 +324,18 @@ class VolumeTracker(object):
         new_candle = Candle(candle_data, candle_time)
         self._update_stats(new_candle)
 
-        pprint.pprint({
-            "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
-            "epic": self._epic,
-            "resolution": self._candle_res,
-            "shape": new_candle.shape,
-            "data": new_candle.get_spread_volume_weight(
-                self._volume_stats,
-                self._candle_spread_stats
-            )
-        })
+        volume, spread, sentiment = new_candle.get_spread_volume_weight(
+            self._volume_stats, self._candle_spread_stats)
+
+        if volume == "HIGH_VOLUME":
+            print("*" * 50)
+            pprint.pprint({
+                "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
+                "epic": self._epic,
+                "resolution": self._candle_res,
+                "shape": new_candle.shape,
+                "data": (volume, spread, sentiment)
+            })
 
 
 def main():
