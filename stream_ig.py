@@ -23,7 +23,7 @@ CONFIG = Config(
     "ZDKPF")
 INTERESTING_ITEMS = [
     'CHART:CS.D.CFDGOLD.CFDGC.IP:1MINUTE',
-    'CHART:CS.D.CFDGOLD.CFDGC.IP:5MINUTE'
+    # 'CHART:CS.D.CFDGOLD.CFDGC.IP:5MINUTE'
 ]
 INTERESTING_FIELDS = [
     "OFR_OPEN", "OFR_CLOSE", "OFR_LOW", "OFR_HIGH", "BID_OPEN",
@@ -146,7 +146,7 @@ class Candle(object):
             upper_wick_length = self._bid_high - self._bid_open
             lower_wick_length = self._bid_close - self._bid_low
 
-        LARGE_WICK_TO_SPREAD_SIZE_MULT = 2.0
+        LARGE_WICK_TO_SPREAD_SIZE_MULT = 1.5
         SMALL_WICK_TO_LARGE_WICK_MULT = 2.0
 
         # A wick is considered large if it's a factor of
@@ -173,12 +173,22 @@ class Candle(object):
 
         if large_upper_wick and small_lower_wick:
             self._shape = "SHOOTING_STAR"
-        if large_lower_wick and small_upper_wick:
+        elif large_lower_wick and small_upper_wick:
             self._shape = "HAMMER"
-        elif upper_wick_length == lower_wick_length:
-            self._shape = "LONG_LEGGED_DOJI"
+        # elif upper_wick_length == lower_wick_length:
+        #     self._shape = "LONG_LEGGED_DOJI"
         else:
             self._shape = "AVERAGE_SHAPE"
+
+        print(
+            "upper", upper_wick_length,
+            "lower", lower_wick_length,
+            "spread", self._spread_size,
+            "large_upper", large_upper_wick,
+            "small_upper", small_upper_wick,
+            "large_lower", large_lower_wick,
+            "small_lower", small_lower_wick,
+        )
 
     def get_spread_volume_weight(self, volume_stats, spread_stats):
         volume_mean, volume_std = volume_stats
@@ -192,9 +202,9 @@ class Candle(object):
 
         spread = "AVERAGE_SPREAD"
         if self._spread_size > spread_mean + spread_std:
-            spread = "HIGH_SPREAD"
+            spread = "WIDE_SPREAD"
         elif self._spread_size <= spread_mean - spread_std:
-            spread = "LOW_SPREAD"
+            spread = "NARROW_SPREAD"
 
         return (volume, spread, self._type)
 
