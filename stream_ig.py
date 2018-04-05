@@ -147,8 +147,10 @@ class Candle(object):
             lower_wick_length = self._bid_close - self._bid_low
 
         LARGE_WICK_TO_SPREAD_SIZE_MULT = 2.0
-        SMALL_WICK_TO_SPREAD_SIZE_MULT = 3.0
+        SMALL_WICK_TO_LARGE_WICK_MULT = 2.0
 
+        # A wick is considered large if it's a factor of
+        # LARGE_WICK_TO_SPREAD_SIZE_MULT larger than the spread size
         large_upper_wick = (
             upper_wick_length >
             self._spread_size * LARGE_WICK_TO_SPREAD_SIZE_MULT
@@ -157,13 +159,16 @@ class Candle(object):
             lower_wick_length >
             self._spread_size * LARGE_WICK_TO_SPREAD_SIZE_MULT
         )
+
+        # A wick is considered small if it is less than half the size of the
+        # opposing one
         small_upper_wick = (
-            upper_wick_length <
-            self._spread_size / SMALL_WICK_TO_SPREAD_SIZE_MULT
+            upper_wick_length * SMALL_WICK_TO_LARGE_WICK_MULT <
+            lower_wick_length
         )
         small_lower_wick = (
-            lower_wick_length <
-            self._spread_size / SMALL_WICK_TO_SPREAD_SIZE_MULT
+            lower_wick_length * SMALL_WICK_TO_LARGE_WICK_MULT <
+            upper_wick_length
         )
 
         if large_upper_wick and small_lower_wick:
