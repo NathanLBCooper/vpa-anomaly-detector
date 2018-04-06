@@ -12,7 +12,6 @@ setup(
     version='0.1',
     packages=find_packages(),
     install_requires=('trading_id', 'pandas', 'numpy'),
-    namespace_packages=['vpaad'],
     description=(
         'Experimental tool for detect anomalies in markets using the '
         'ig.com API and volume price analysis'
