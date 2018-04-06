@@ -45,11 +45,13 @@ class Emailer(object):
             LOGGER.error("Failed to send mail. Exception: %r", exc)
 
     def start(self):
+        LOGGER.info("Starting Emailer thread.")
         self._running = True
         self._emailer_thread = threading.Thread(target=self._run)
         self._emailer_thread.start()
 
     def stop(self):
+        LOGGER.info("Stopping Emailer thread.")
         if self._emailer_thread is not None:
             self._running = False
             self._emailer_thread.join()
