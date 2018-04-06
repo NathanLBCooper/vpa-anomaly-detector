@@ -23,3 +23,4 @@ CANDLE_RES_TO_TIMEDELTA = {
     "HOUR": datetime.timedelta(hours=1),
 }
 DATETIME_STR_FORMAT = "%Y-%m-%d %H:%M:%S"
+DF_DATETIME_FORMAT = "%Y:%m:%d-%H:%M:%S"

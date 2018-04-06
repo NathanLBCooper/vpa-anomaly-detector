@@ -10,6 +10,8 @@ from trading_ig.lightstreamer import Subscription
 
 from vpaad.constants import INTERESTING_FIELDS
 from vpaad.volume_tracker import VolumeTracker
+from vpaad.historical_data_fetcher import (
+    RealHistoricalDataFetcher, InterpolatedHistoricalDataFetcher)
 
 
 def create_ig_service(credentials):
@@ -40,10 +42,11 @@ def verify_stream_service_account(ig_stream_service, credentials):
                credentials["acc_number"], accounts))
 
 
-def subscribe_to_interesting_items(ig_service, ig_stream_service, markets):
+def subscribe_to_interesting_items(
+        ig_service, ig_stream_service, markets, historical_data_fetcher):
     volume_trackers = {}
     for name, item in markets.items():
-        vt = VolumeTracker(name, item, ig_service)
+        vt = VolumeTracker(name, item, ig_service, historical_data_fetcher)
         vt.initiate()
         volume_trackers[item] = vt
 
@@ -69,12 +72,25 @@ def subscribe_to_interesting_items(ig_service, ig_stream_service, markets):
     ig_stream_service.ls_client.subscribe(subscription_prices)
 
 
+def historical_data_fetcher_factory(
+        interpolated_hd_params, ig_service, real_history):
+    if real_history:
+        return RealHistoricalDataFetcher(ig_service)
+    else:
+        return InterpolatedHistoricalDataFetcher(interpolated_hd_params)
+
+
 @click.command()
 @click.option(
     "--config",
     default="config.json",
     help="The location of the vpaad config JSON file.")
-def run(config):
+@click.option(
+    "--real-history",
+    default=False,
+    help="When True, set to use real historical data to determine thresholds. "
+         "Otherwise, use user-defined parameters to interpolate thresholds.")
+def run(config, real_history):
     logging.basicConfig(level=logging.INFO)
 
     cfg_json = {}
@@ -83,6 +99,8 @@ def run(config):
 
     credentials = cfg_json["credentials"]
     markets = cfg_json["markets"]
+    # Optional config
+    interpolated_hd_params = cfg_json.get("interpolated_hd_params")
 
     ig_service = create_ig_service(credentials)
     ig_stream_service = IGStreamService(ig_service)
@@ -91,7 +109,10 @@ def run(config):
     try:
         # Connect to account
         ig_stream_service.connect(account_id)
-        subscribe_to_interesting_items(ig_service, ig_stream_service, markets)
+        historical_data_fetcher = historical_data_fetcher_factory(
+            interpolated_hd_params, ig_service, real_history)
+        subscribe_to_interesting_items(
+            ig_service, ig_stream_service, markets, historical_data_fetcher)
 
         print("Press Ctrl-C to exit.\n")
 

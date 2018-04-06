@@ -5,30 +5,18 @@ import pprint
 import time
 
 import numpy as np
-import pandas as pd
 
 from vpaad.constants import (
     CANDLE_RES_TO_TIMEDELTA, CANDLE_RES_TO_HISTORICAL_RES, DATETIME_STR_FORMAT,
-    START_TIME_MULIPLIER)
+    START_TIME_MULIPLIER, DF_DATETIME_FORMAT)
 from vpaad.candle import Candle
-
-
-def condense_historic_data(df):
-    sub_df = df.iloc[:, df.columns.get_level_values(0) == "bid"]
-    volume_df = df.iloc[:, df.columns.get_level_values(1) == 'Volume']
-    candle_df = sub_df["bid"]
-    candle_df["Volume"] = volume_df["last"]["Volume"]
-    candle_df["AbsSpread"] = (
-        pd.Series.abs(candle_df["Open"] - candle_df["Close"]))
-    print(candle_df)
-    return candle_df
 
 
 class VolumeTracker(object):
     """
     Class tracks volume for a given item.
     """
-    def __init__(self, name, item, ig_service):
+    def __init__(self, name, item, ig_service, historical_data_fetcher):
         self._name = name
         _stream_type, epic, resolution = item.split(":")
 
@@ -38,6 +26,7 @@ class VolumeTracker(object):
         self._timedelta = CANDLE_RES_TO_TIMEDELTA[resolution]
 
         self._ig_service = ig_service
+        self._historical_data_fetcher = historical_data_fetcher
 
         self._candles = []
 
@@ -88,15 +77,12 @@ class VolumeTracker(object):
 
         print("Start time:", start_time, ". End time:", now)
 
-        historical_info = (
-            self._ig_service.fetch_historical_prices_by_epic_and_date_range(
-                self._epic,
-                self._historical_res,
-                start_time.strftime(DATETIME_STR_FORMAT),
-                now.strftime(DATETIME_STR_FORMAT))
+        df = self._historical_data_fetcher.fetch(
+            self._epic,
+            self._historical_res,
+            start_time.strftime(DATETIME_STR_FORMAT),
+            now.strftime(DATETIME_STR_FORMAT)
         )
-
-        df = condense_historic_data(historical_info["prices"])
         self._initiate_volume_stats(df["Volume"])
         self._initiate_candle_spread_stats(df["AbsSpread"])
         self._add_candles_from_historic_data(df)
@@ -104,7 +90,7 @@ class VolumeTracker(object):
     def _add_candles_from_historic_data(self, df):
         for i, row in df.iterrows():
             candle_date = datetime.datetime.strptime(
-                row.name, "%Y:%m:%d-%H:%M:%S")
+                row.name, DF_DATETIME_FORMAT)
             utm_time = time.mktime(candle_date.timetuple()) * 1000
             candle_data = {
                 "BID_OPEN": row["Open"],
