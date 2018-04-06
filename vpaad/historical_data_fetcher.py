@@ -67,6 +67,8 @@ class InterpolatedHistoricalDataFetcher(IHistoricalDataFetcher):
             volume_params["mean"], volume_params["std"], START_TIME_MULIPLIER)
         spread_a = np.random.normal(
             spread_params["mean"], spread_params["std"], START_TIME_MULIPLIER)
+        volume_a = np.absolute(volume_a)
+        spread_a = np.absolute(spread_a)
 
         df = pd.DataFrame()
 
