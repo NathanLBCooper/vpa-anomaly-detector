@@ -3,6 +3,7 @@
 import json
 import logging
 import time
+import traceback
 
 import click
 from trading_ig import (IGService, IGStreamService)
@@ -101,12 +102,20 @@ def run(config, real_history):
 
     credentials = cfg_json["credentials"]
     markets = cfg_json["markets"]
-    # Optional config
     interpolated_hd_params = cfg_json.get("interpolated_hd_params")
 
     ig_service = create_ig_service(credentials)
     ig_stream_service = IGStreamService(ig_service)
-    account_id = verify_stream_service_account(ig_stream_service, credentials)
+
+    try:
+        account_id = verify_stream_service_account(
+            ig_stream_service, credentials)
+    except KeyError:
+        LOGGER.error(traceback.format_exc())
+        LOGGER.error(
+            "Error establishing IG session. Check that your credentials "
+            "are correct in your configuration JSON file. If it's correct, "
+            "your account might be blacklisted. Contact ig.com to fix it.")
 
     try:
         # Connect to account
@@ -123,6 +132,9 @@ def run(config, real_history):
 
     except KeyboardInterrupt:
         print("Ctrl-C received.")
+    except Exception:
+        LOGGER.error("An unexpected error occurred.")
+        LOGGER.error(traceback.format_exc())
     finally:
         # Disconnecting
         ig_stream_service.disconnect()
