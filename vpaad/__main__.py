@@ -59,15 +59,16 @@ def search(config, term):
     default="config.json",
     help="The location of the vpaad config JSON file.")
 @click.option(
-    "--real-history/--fake-history",
-    default=True,
-    help="When True, set to use real historical data to determine thresholds. "
-         "Otherwise, use user-defined parameters to interpolate thresholds.")
+    "--rhistory/--ihistory",
+    default=False,
+    help="When set --rhistory, set to use real historical data to "
+         "determine thresholds. Otherwise, use user-defined parameters "
+         "to interpolate initial thresholds.")
 @click.option(
     "--send-emails/--no-emails",
     default=False,
     help="When True, send e-mails when anomalies are detected in markets.")
-def monitor(config, real_history, send_emails):
+def monitor(config, rhistory, send_emails):
     """
     Run the main VPA anomaly detection procedure.
     """
@@ -91,7 +92,7 @@ def monitor(config, real_history, send_emails):
         # Connect to account
         ig_stream_service.connect(account_id)
         historical_data_fetcher = create_historical_data_fetcher(
-            interpolated_hd_params, ig_service, real_history)
+            interpolated_hd_params, ig_service, rhistory)
         callbacks = () if emailer is None else (emailer.add_email_to_queue,)
         add_volume_trackers(
             ig_service,
