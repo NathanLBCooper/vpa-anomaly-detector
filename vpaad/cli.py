@@ -6,7 +6,6 @@ import time
 import traceback
 
 import click
-from trading_ig import (IGService, IGStreamService)
 from trading_ig.lightstreamer import Subscription
 
 from vpaad.constants import INTERESTING_FIELDS
@@ -14,51 +13,10 @@ from vpaad.configuration import set_up_logging
 from vpaad.volume_tracker import VolumeTracker
 from vpaad.historical_data_fetcher import (
     RealHistoricalDataFetcher, InterpolatedHistoricalDataFetcher)
+from vpaad import ig
 
 set_up_logging()
 LOGGER = logging.getLogger("vpaad")
-
-
-def create_ig_service(credentials):
-    LOGGER.info(
-        "Creating service with user:%s, api_key:%s, password:<hidden>",
-        credentials["username"], credentials["api_key"])
-    return IGService(
-        credentials["username"],
-        credentials["password"],
-        credentials["api_key"])
-
-
-def create_ig_stream_service(ig_service):
-    return IGStreamService(ig_service)
-
-
-def create_ig_session(ig_service):
-    try:
-        return ig_service.create_session()
-    except KeyError:
-        LOGGER.error(traceback.format_exc())
-        LOGGER.error(
-            "Error establishing IG session. Check that your credentials "
-            "are correct in your configuration JSON file. If it's correct, "
-            "your account might be blacklisted. Contact ig.com to fix it.")
-        raise
-
-
-def verify_stream_service_account(ig_stream_service, credentials):
-    ig_session = create_ig_session(ig_stream_service)
-    # Ensure configured account is selected
-    accounts = ig_session[u'accounts']
-    accountId = None
-
-    for account in accounts:
-        if account[u'accountId'] == credentials["acc_number"]:
-            return account[u'accountId']
-
-    if accountId is None:
-        raise ValueError(
-           'Account not found: {0} in {1}'.format(
-               credentials["acc_number"], accounts))
 
 
 def add_volume_trackers(
@@ -119,9 +77,9 @@ def search(config, term):
         cfg_json = json.load(cfg_file)
 
     credentials = cfg_json["credentials"]
-    ig_service = create_ig_service(credentials)
+    ig_service = ig.create_ig_service(credentials)
 
-    create_ig_session(ig_service)
+    ig.create_ig_session(ig_service)
     print(ig_service.search_markets(term))
 
 
@@ -147,10 +105,10 @@ def monitor(config, real_history):
     markets = cfg_json["markets"]
     interpolated_hd_params = cfg_json.get("interpolated_hd_params")
 
-    ig_service = create_ig_service(credentials)
-    ig_stream_service = IGStreamService(ig_service)
+    ig_service = ig.create_ig_service(credentials)
+    ig_stream_service = ig.create_ig_stream_service(ig_service)
 
-    account_id = verify_stream_service_account(
+    account_id = ig.verify_stream_service_account(
         ig_stream_service, credentials)
 
     try:
