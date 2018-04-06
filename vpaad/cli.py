@@ -61,7 +61,7 @@ def verify_stream_service_account(ig_stream_service, credentials):
                credentials["acc_number"], accounts))
 
 
-def subscribe_to_markets(
+def add_volume_trackers(
         ig_service, ig_stream_service, markets, historical_data_fetcher):
     volume_trackers = {}
     for name, item in markets.items():
@@ -158,7 +158,7 @@ def monitor(config, real_history):
         ig_stream_service.connect(account_id)
         historical_data_fetcher = historical_data_fetcher_factory(
             interpolated_hd_params, ig_service, real_history)
-        subscribe_to_markets(
+        add_volume_trackers(
             ig_service, ig_stream_service, markets, historical_data_fetcher)
 
         print("Press Ctrl-C to exit.\n")
