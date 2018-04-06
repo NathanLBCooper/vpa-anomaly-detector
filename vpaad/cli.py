@@ -20,7 +20,9 @@ LOGGER = logging.getLogger("vpaad")
 
 
 def create_ig_service(credentials):
-    LOGGER.info("Creating service with", credentials)
+    LOGGER.info(
+        "Creating service with user:%s, api_key:%s, password:<hidden>",
+        credentials["username"], credentials["api_key"])
     return IGService(
         credentials["username"],
         credentials["password"],
@@ -31,8 +33,20 @@ def create_ig_stream_service(ig_service):
     return IGStreamService(ig_service)
 
 
+def create_ig_session(ig_service):
+    try:
+        return ig_service.create_session()
+    except KeyError:
+        LOGGER.error(traceback.format_exc())
+        LOGGER.error(
+            "Error establishing IG session. Check that your credentials "
+            "are correct in your configuration JSON file. If it's correct, "
+            "your account might be blacklisted. Contact ig.com to fix it.")
+        raise
+
+
 def verify_stream_service_account(ig_stream_service, credentials):
-    ig_session = ig_stream_service.create_session()
+    ig_session = create_ig_session(ig_stream_service)
     # Ensure configured account is selected
     accounts = ig_session[u'accounts']
     accountId = None
@@ -107,15 +121,7 @@ def search(config, term):
     credentials = cfg_json["credentials"]
     ig_service = create_ig_service(credentials)
 
-    try:
-        ig_service.create_session()
-    except KeyError:
-        LOGGER.error(traceback.format_exc())
-        LOGGER.error(
-            "Error establishing IG session. Check that your credentials "
-            "are correct in your configuration JSON file. If it's correct, "
-            "your account might be blacklisted. Contact ig.com to fix it.")
-
+    create_ig_session(ig_service)
     print(ig_service.search_markets(term))
 
 
@@ -144,15 +150,8 @@ def monitor(config, real_history):
     ig_service = create_ig_service(credentials)
     ig_stream_service = IGStreamService(ig_service)
 
-    try:
-        account_id = verify_stream_service_account(
-            ig_stream_service, credentials)
-    except KeyError:
-        LOGGER.error(traceback.format_exc())
-        LOGGER.error(
-            "Error establishing IG session. Check that your credentials "
-            "are correct in your configuration JSON file. If it's correct, "
-            "your account might be blacklisted. Contact ig.com to fix it.")
+    account_id = verify_stream_service_account(
+        ig_stream_service, credentials)
 
     try:
         # Connect to account
