@@ -163,8 +163,9 @@ class VolumeTracker(object):
         if len(self._candles) > START_TIME_MULIPLIER:
             self._candles.pop(0)
 
+        notable_shapes = ("STRONG_HAMMER", "STRONG_SHOOTING_STAR")
         if (volume == "HIGH_VOLUME"
-                and new_candle.shape["shape_type"] != "AVERAGE_SHAPE"):
+                and new_candle.shape["shape_type"] in notable_shapes):
             full_details = pprint.pformat({
                 "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
                 "name": self._name,

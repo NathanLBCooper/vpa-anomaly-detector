@@ -40,40 +40,19 @@ class Candle(object):
             upper_wick_length = self._bid_high - self._bid_open
             lower_wick_length = self._bid_close - self._bid_low
 
-        LARGE_WICK_TO_SPREAD_SIZE_MULT = 1.5
-        SMALL_WICK_TO_LARGE_WICK_MULT = 2.5
-
-        # A wick is considered large if it's a factor of
-        # LARGE_WICK_TO_SPREAD_SIZE_MULT larger than the spread size
-        large_upper_wick = (
-            upper_wick_length >
-            self._spread_size * LARGE_WICK_TO_SPREAD_SIZE_MULT
-        )
-        large_lower_wick = (
-            lower_wick_length >
-            self._spread_size * LARGE_WICK_TO_SPREAD_SIZE_MULT
-        )
-
-        # A wick is considered small if it is less than half the size of the
-        # opposing one
-        small_upper_wick = (
-            upper_wick_length * SMALL_WICK_TO_LARGE_WICK_MULT <
-            lower_wick_length
-        )
-        small_lower_wick = (
-            lower_wick_length * SMALL_WICK_TO_LARGE_WICK_MULT <
-            upper_wick_length
-        )
-
         candle_height = self._bid_high - self._bid_low
         upper_wick_percentage = upper_wick_length / candle_height
         lower_wick_percentage = lower_wick_length / candle_height
 
-        if large_upper_wick and small_lower_wick:
-            shape_name = "SHOOTING_STAR"
-        elif large_lower_wick and small_upper_wick:
-            shape_name = "HAMMER"
-        elif large_upper_wick and large_lower_wick:
+        if upper_wick_percentage > 0.75:
+            shape_name = "STRONG_SHOOTING_STAR"
+        elif upper_wick_percentage > 0.4 and lower_wick_percentage < 0.3:
+            shape_name = "WEAK_SHOOTING_STAR"
+        elif lower_wick_percentage > 0.75:
+            shape_name = "STRONG_HAMMER"
+        elif lower_wick_percentage > 0.4 and upper_wick_percentage < 0.3:
+            shape_name = "WEAK HAMMER"
+        elif lower_wick_percentage > 0.4 and upper_wick_percentage > 0.4:
             shape_name = "LONG_LEGGED_DOJI"
         else:
             shape_name = "AVERAGE_SHAPE"
@@ -83,17 +62,6 @@ class Candle(object):
             "upper_wick_percentage": upper_wick_percentage,
             "lower_wick_percentage": lower_wick_percentage
         }
-
-        # print("*" * 50)
-        # print(
-        #     "upper", upper_wick_length,
-        #     "lower", lower_wick_length,
-        #     "spread", self._spread_size,
-        #     "large_upper", large_upper_wick,
-        #     "small_upper", small_upper_wick,
-        #     "large_lower", large_lower_wick,
-        #     "small_lower", small_lower_wick,
-        # )
 
     def get_spread_volume_weight(self, volume_stats, spread_stats):
         volume_mean, volume_std = volume_stats
