@@ -67,7 +67,7 @@ class Candle(object):
         volume_mean, volume_std = volume_stats
         spread_mean, spread_std = spread_stats
 
-        NUMBER_OF_STDS_AWAY_FROM_MEAN = 1.25
+        NUMBER_OF_STDS_AWAY_FROM_MEAN = 1.0
         volume = "AVERAGE_VOLUME"
         volume_epsilon = NUMBER_OF_STDS_AWAY_FROM_MEAN * volume_std
         if self._volume > volume_mean + volume_epsilon:
