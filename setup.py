@@ -11,7 +11,7 @@ setup(
     url='https://github.com/mikeymo/vpa_anomaly_detector',
     version='0.1',
     packages=find_packages(),
-    install_requires=('trading_ig', 'pandas', 'numpy'),
+    install_requires=('trading_ig', 'pandas', 'numpy', 'click'),
     description=(
         'Experimental tool for detect anomalies in markets using the '
         'ig.com API and volume price analysis'
