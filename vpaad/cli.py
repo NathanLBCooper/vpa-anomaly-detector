@@ -87,7 +87,7 @@ def historical_data_fetcher_factory(
     help="The location of the vpaad config JSON file.")
 @click.option(
     "--real-history",
-    default=False,
+    default=True,
     help="When True, set to use real historical data to determine thresholds. "
          "Otherwise, use user-defined parameters to interpolate thresholds.")
 def run(config, real_history):
