@@ -5,6 +5,7 @@ import logging
 import pprint
 import datetime
 import math
+import time
 
 import numpy as np
 import pandas as pd
@@ -16,26 +17,36 @@ Config = collections.namedtuple(
     "Config",
     ['username', 'password', 'api_key', 'acc_number'])
 
+START_TIME_MULIPLIER = 96
 CONFIG = Config(
     "mikeymo",
     "titlt9i2w:IG",
     "2b295a137bf7156ab56762bece9601aa49cc0a7a",
     "ZDKPF")
-INTERESTING_ITEMS = [
-    'CHART:CS.D.CFDGOLD.CFDGC.IP:1MINUTE',
-    # 'CHART:CS.D.CFDGOLD.CFDGC.IP:5MINUTE'
-]
+INTERESTING_ITEMS = {
+    "Spot Gold (5M)": 'CHART:CS.D.CFDGOLD.CFDGC.IP:5MINUTE',
+    "Spot Silver (5M)": 'CHART:CS.D.CFDSILVER.CFDSI.IP:5MINUTE',
+    "Spot Gold (15M)": 'CHART:CS.D.CFDGOLD.CFDGC.IP:15MINUTE',
+    "Spot Silver (15M)": 'CHART:CS.D.CFDSILVER.CFDSI.IP:15MINUTE',
+    "Spot Gold (30M)": 'CHART:CS.D.CFDGOLD.CFDGC.IP:30MINUTE',
+    "Spot Silver (30M)": 'CHART:CS.D.CFDSILVER.CFDSI.IP:30MINUTE',
+}
 INTERESTING_FIELDS = [
     "OFR_OPEN", "OFR_CLOSE", "OFR_LOW", "OFR_HIGH", "BID_OPEN",
     "BID_CLOSE", "BID_LOW", "BID_HIGH", "CONS_END", "CONS_TICK_COUNT",
+    "UTM"
 ]
 CANDLE_RES_TO_HISTORICAL_RES = {
-    "5MINUTE": "5Min",
     "1MINUTE": "1Min",
+    "5MINUTE": "5Min",
+    "15MINUTE": "15Min",
+    "30MINUTE": "30Min",
 }
 CANDLE_RES_TO_TIMEDELTA = {
     "5MINUTE": datetime.timedelta(minutes=5),
-    "1MINUTE": datetime.timedelta(minutes=1)
+    "1MINUTE": datetime.timedelta(minutes=1),
+    "15MINUTE": datetime.timedelta(minutes=15),
+    "30MINUTE": datetime.timedelta(minutes=30),
 }
 DATETIME_STR_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -76,8 +87,8 @@ def verify_stream_service_account(ig_stream_service, cfg):
 
 def subscribe_to_interesting_items(ig_service, ig_stream_service):
     volume_trackers = {}
-    for item in INTERESTING_ITEMS:
-        vt = VolumeTracker(item, ig_service)
+    for name, item in INTERESTING_ITEMS.items():
+        vt = VolumeTracker(name, item, ig_service)
         vt.initiate()
         volume_trackers[item] = vt
 
@@ -91,7 +102,7 @@ def subscribe_to_interesting_items(ig_service, ig_stream_service):
     # Making a new Subscription in MERGE mode
     subscription_prices = Subscription(
         mode="MERGE",
-        items=INTERESTING_ITEMS,
+        items=INTERESTING_ITEMS.values(),
         fields=INTERESTING_FIELDS,
     )
 
@@ -102,19 +113,19 @@ def subscribe_to_interesting_items(ig_service, ig_stream_service):
     ig_stream_service.ls_client.subscribe(subscription_prices)
 
 
-def extract_candle_spread_from_historical_data(df):
+def condense_historic_data(df):
     sub_df = df.iloc[:, df.columns.get_level_values(0) == "bid"]
-    bid_df = sub_df["bid"]
-    return pd.Series.abs(bid_df["Open"] - bid_df["Close"])
-
-
-def extract_volume_from_historical_data(df):
-    sub_df = df.iloc[:, df.columns.get_level_values(1) == 'Volume']
-    return sub_df["last"]["Volume"]
+    volume_df = df.iloc[:, df.columns.get_level_values(1) == 'Volume']
+    candle_df = sub_df["bid"]
+    candle_df["Volume"] = volume_df["last"]["Volume"]
+    candle_df["AbsSpread"] = (
+        pd.Series.abs(candle_df["Open"] - candle_df["Close"]))
+    print(candle_df)
+    return candle_df
 
 
 class Candle(object):
-    def __init__(self, candle_data, candle_time):
+    def __init__(self, candle_data):
         self._bid_high = float(candle_data["BID_HIGH"])
         self._bid_low = float(candle_data["BID_LOW"])
         self._bid_open = float(candle_data["BID_OPEN"])
@@ -122,7 +133,8 @@ class Candle(object):
         self._volume = float(candle_data["CONS_TICK_COUNT"])
         self._spread = self._bid_close - self._bid_open
         self._spread_size = math.fabs(self._spread)
-        self._time = candle_time
+        self._time = datetime.datetime.fromtimestamp(
+            int(candle_data["UTM"]) / 1000)
 
         if self._spread > 0:
             self._type = "BULLISH"
@@ -147,7 +159,7 @@ class Candle(object):
             lower_wick_length = self._bid_close - self._bid_low
 
         LARGE_WICK_TO_SPREAD_SIZE_MULT = 1.5
-        SMALL_WICK_TO_LARGE_WICK_MULT = 2.0
+        SMALL_WICK_TO_LARGE_WICK_MULT = 2.5
 
         # A wick is considered large if it's a factor of
         # LARGE_WICK_TO_SPREAD_SIZE_MULT larger than the spread size
@@ -171,15 +183,26 @@ class Candle(object):
             upper_wick_length
         )
 
-        if large_upper_wick and small_lower_wick:
-            self._shape = "SHOOTING_STAR"
-        elif large_lower_wick and small_upper_wick:
-            self._shape = "HAMMER"
-        elif large_upper_wick and large_lower_wick:
-            self._shape = "LONG_LEGGED_DOJI"
-        else:
-            self._shape = "AVERAGE_SHAPE"
+        candle_height = self._bid_high - self._bid_low
+        upper_wick_percentage = upper_wick_length / candle_height
+        lower_wick_percentage = lower_wick_length / candle_height
 
+        if large_upper_wick and small_lower_wick:
+            shape_name = "SHOOTING_STAR"
+        elif large_lower_wick and small_upper_wick:
+            shape_name = "HAMMER"
+        elif large_upper_wick and large_lower_wick:
+            shape_name = "LONG_LEGGED_DOJI"
+        else:
+            shape_name = "AVERAGE_SHAPE"
+
+        self._shape = {
+            "shape_type": shape_name,
+            "upper_wick_percentage": upper_wick_percentage,
+            "lower_wick_percentage": lower_wick_percentage
+        }
+
+        # print("*" * 50)
         # print(
         #     "upper", upper_wick_length,
         #     "lower", lower_wick_length,
@@ -229,8 +252,9 @@ class VolumeTracker(object):
     """
     Class tracks volume for a given item.
     """
-    def __init__(self, item, ig_service):
-        _, epic, resolution = item.split(":")
+    def __init__(self, name, item, ig_service):
+        self._name = name
+        _stream_type, epic, resolution = item.split(":")
 
         self._epic = epic
         self._candle_res = resolution
@@ -238,6 +262,8 @@ class VolumeTracker(object):
         self._timedelta = CANDLE_RES_TO_TIMEDELTA[resolution]
 
         self._ig_service = ig_service
+
+        self._candles = []
 
         self._volumes = None
         self._volume_stats = None
@@ -281,7 +307,6 @@ class VolumeTracker(object):
         print("*" * 50)
         print("Initiating:", self._epic, self._candle_res)
 
-        START_TIME_MULIPLIER = 96
         now = datetime.datetime.now()
         start_time = now - self._timedelta * START_TIME_MULIPLIER
 
@@ -289,18 +314,31 @@ class VolumeTracker(object):
 
         historical_info = (
             self._ig_service.fetch_historical_prices_by_epic_and_date_range(
-                    self._epic,
-                    self._historical_res,
-                    start_time.strftime(DATETIME_STR_FORMAT),
-                    now.strftime(DATETIME_STR_FORMAT))
+                self._epic,
+                self._historical_res,
+                start_time.strftime(DATETIME_STR_FORMAT),
+                now.strftime(DATETIME_STR_FORMAT))
         )
 
-        df = historical_info["prices"]
-        vol_series = extract_volume_from_historical_data(df)
-        spread_series = extract_candle_spread_from_historical_data(df)
+        df = condense_historic_data(historical_info["prices"])
+        self._initiate_volume_stats(df["Volume"])
+        self._initiate_candle_spread_stats(df["AbsSpread"])
+        self._add_candles_from_historic_data(df)
 
-        self._initiate_volume_stats(vol_series)
-        self._initiate_candle_spread_stats(spread_series)
+    def _add_candles_from_historic_data(self, df):
+        for i, row in df.iterrows():
+            candle_date = datetime.datetime.strptime(
+                row.name, "%Y:%m:%d-%H:%M:%S")
+            utm_time = time.mktime(candle_date.timetuple()) * 1000
+            candle_data = {
+                "BID_OPEN": row["Open"],
+                "BID_CLOSE": row["Close"],
+                "BID_HIGH": row["High"],
+                "BID_LOW": row["Low"],
+                "CONS_TICK_COUNT": row["Volume"],
+                "UTM": utm_time,
+            }
+            self.add_candle(candle_data)
 
     def _update_stats(self, new_candle):
         """
@@ -320,22 +358,27 @@ class VolumeTracker(object):
 
     def add_candle(self, candle_data):
         """Add a candle to this volume tracker"""
-        candle_time = datetime.datetime.now() - self._timedelta
-        new_candle = Candle(candle_data, candle_time)
+        new_candle = Candle(candle_data)
         self._update_stats(new_candle)
 
         volume, spread, sentiment = new_candle.get_spread_volume_weight(
             self._volume_stats, self._candle_spread_stats)
 
         if volume == "HIGH_VOLUME":
-            print("*" * 50)
+            print(50 * "*")
             pprint.pprint({
                 "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
+                "name": self._name,
                 "epic": self._epic,
                 "resolution": self._candle_res,
                 "shape": new_candle.shape,
                 "data": (volume, spread, sentiment)
             })
+
+        self._candles.append(new_candle)
+
+        if len(self._candles) > START_TIME_MULIPLIER:
+            self._candles.pop(0)
 
 
 def main():
@@ -350,7 +393,11 @@ def main():
         ig_stream_service.connect(account_id)
         subscribe_to_interesting_items(ig_service, ig_stream_service)
 
-        raw_input("Press any key to exit.\n")
+        print("Press Ctrl-C to exit.\n")
+
+        while True:
+            time.sleep(10)
+
     except KeyboardInterrupt:
         print("Ctrl-C received.")
     finally:
