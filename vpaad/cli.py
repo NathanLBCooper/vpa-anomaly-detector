@@ -85,6 +85,40 @@ def historical_data_fetcher_factory(
         return InterpolatedHistoricalDataFetcher(interpolated_hd_params)
 
 
+@click.group()
+def cli():
+    pass
+
+
+@click.command()
+@click.option(
+    "--config",
+    default="config.json",
+    help="The location of the vpaad config JSON file.")
+@click.argument("term")
+def search(config, term):
+    """
+    Search market database for given term
+    """
+    cfg_json = {}
+    with open(config, "r") as cfg_file:
+        cfg_json = json.load(cfg_file)
+
+    credentials = cfg_json["credentials"]
+    ig_service = create_ig_service(credentials)
+
+    try:
+        ig_service.create_session()
+    except KeyError:
+        LOGGER.error(traceback.format_exc())
+        LOGGER.error(
+            "Error establishing IG session. Check that your credentials "
+            "are correct in your configuration JSON file. If it's correct, "
+            "your account might be blacklisted. Contact ig.com to fix it.")
+
+    print(ig_service.search_markets(term))
+
+
 @click.command()
 @click.option(
     "--config",
@@ -95,7 +129,10 @@ def historical_data_fetcher_factory(
     default=True,
     help="When True, set to use real historical data to determine thresholds. "
          "Otherwise, use user-defined parameters to interpolate thresholds.")
-def run(config, real_history):
+def monitor(config, real_history):
+    """
+    Run the main VPA anomaly detection procedure.
+    """
     cfg_json = {}
     with open(config, "r") as cfg_file:
         cfg_json = json.load(cfg_file)
@@ -140,5 +177,9 @@ def run(config, real_history):
         ig_stream_service.disconnect()
 
 
+cli.add_command(search)
+cli.add_command(monitor)
+
+
 if __name__ == '__main__':
-    run()
+    cli()
