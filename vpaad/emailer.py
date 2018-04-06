@@ -3,7 +3,7 @@ import logging
 import smtplib
 import threading
 import time
-from Queue import Queue
+from Queue import Queue, Empty
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class Emailer(object):
                     new_email = self._queue.get_nowait()
                 summary, content = new_email
                 self._send_email(summary, content)
-            except Queue.Empty:
+            except Empty:
                 pass
             time.sleep(1)
 
