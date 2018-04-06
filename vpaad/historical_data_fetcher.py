@@ -1,11 +1,15 @@
+# -*- coding:utf-8 -*-
 import datetime
 
+import logging
 import numpy as np
 import pandas as pd
 
 from vpaad.constants import (
     START_TIME_MULIPLIER, DATETIME_STR_FORMAT, DF_DATETIME_FORMAT,
     HISTORICAL_RES_TO_TIMEDELTA)
+
+LOGGER = logging.getLogger(__name__)
 
 
 def condense_historic_data(df):
@@ -15,7 +19,7 @@ def condense_historic_data(df):
     candle_df["Volume"] = volume_df["last"]["Volume"]
     candle_df["AbsSpread"] = (
         pd.Series.abs(candle_df["Open"] - candle_df["Close"]))
-    print(candle_df)
+    # print(candle_df)
     return candle_df
 
 

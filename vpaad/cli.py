@@ -9,13 +9,17 @@ from trading_ig import (IGService, IGStreamService)
 from trading_ig.lightstreamer import Subscription
 
 from vpaad.constants import INTERESTING_FIELDS
+from vpaad.configuration import set_up_logging
 from vpaad.volume_tracker import VolumeTracker
 from vpaad.historical_data_fetcher import (
     RealHistoricalDataFetcher, InterpolatedHistoricalDataFetcher)
 
+set_up_logging()
+LOGGER = logging.getLogger("vpaad")
+
 
 def create_ig_service(credentials):
-    print("Creating service with", credentials)
+    LOGGER.info("Creating service with", credentials)
     return IGService(
         credentials["username"],
         credentials["password"],
@@ -91,8 +95,6 @@ def historical_data_fetcher_factory(
     help="When True, set to use real historical data to determine thresholds. "
          "Otherwise, use user-defined parameters to interpolate thresholds.")
 def run(config, real_history):
-    logging.basicConfig(level=logging.INFO)
-
     cfg_json = {}
     with open(config, "r") as cfg_file:
         cfg_json = json.load(cfg_file)

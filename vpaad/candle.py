@@ -1,7 +1,9 @@
-# !/usr/bin/env python
 # -*- coding:utf-8 -*-
 import datetime
 import math
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 class Candle(object):

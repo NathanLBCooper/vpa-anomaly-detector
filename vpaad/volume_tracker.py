@@ -1,6 +1,6 @@
-# !/usr/bin/env python
 # -*- coding:utf-8 -*-
 import datetime
+import logging
 import pprint
 import time
 
@@ -10,6 +10,8 @@ from vpaad.constants import (
     CANDLE_RES_TO_TIMEDELTA, CANDLE_RES_TO_HISTORICAL_RES, DATETIME_STR_FORMAT,
     START_TIME_MULIPLIER, DF_DATETIME_FORMAT)
 from vpaad.candle import Candle
+
+LOGGER = logging.getLogger(__name__)
 
 
 class VolumeTracker(object):
@@ -36,6 +38,14 @@ class VolumeTracker(object):
         self._candle_spreads = None
         self._candle_spread_stats = None
 
+        self._log_prefix = "VT:{}".format(self._name)
+
+    def log(self, msg, *args):
+        LOGGER.info(" ".join((self._log_prefix, msg)), *args)
+
+    def log_debug(self, msg, *args):
+        LOGGER.debug(" ".join((self._log_prefix, msg)), *args)
+
     def _initiate_volume_stats(self, vol_series):
         """
         Calculate volume data from a Series of volumes
@@ -47,10 +57,9 @@ class VolumeTracker(object):
         self._volume_stats = (mean, std)
         self._volumes = vol_series.tolist()
 
-        print("*" * 50)
-        print("Mean Volume:", mean)
-        print("Volume Standard Deviation:", std)
-        print("Anomaly Volume Threshold:", mean + std)
+        self.log_debug("Mean Volume: %s", mean)
+        self.log_debug("Volume Standard Deviation: %s", std)
+        self.log_debug("Anomaly Volume Threshold: %s", mean + std)
 
     def _initiate_candle_spread_stats(self, spread_series):
         desc = spread_series.describe()
@@ -60,22 +69,20 @@ class VolumeTracker(object):
         self._candle_spread_stats = (mean, std)
         self._candle_spreads = spread_series.tolist()
 
-        print("*" * 50)
-        print("Mean Spread:", mean)
-        print("Spread Standard Deviation:", std)
-        print("Anomaly Spread Threshold:", mean + std)
+        self.log_debug("Mean Spread: %s", mean)
+        self.log_debug("Spread Standard Deviation: %s", std)
+        self.log_debug("Anomaly Spread Threshold: %s", mean + std)
 
     def initiate(self):
         """
         Populate average volume from historical price data
         """
-        print("*" * 50)
-        print("Initiating:", self._epic, self._candle_res)
+        self.log_debug("Initiating")
 
         now = datetime.datetime.now()
         start_time = now - self._timedelta * START_TIME_MULIPLIER
 
-        print("Start time:", start_time, ". End time:", now)
+        self.log_debug("Start time: %s, End time: %s", start_time, now)
 
         df = self._historical_data_fetcher.fetch(
             self._epic,
@@ -127,15 +134,16 @@ class VolumeTracker(object):
             self._volume_stats, self._candle_spread_stats)
 
         if volume == "HIGH_VOLUME":
-            print(50 * "*")
-            pprint.pprint({
-                "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
-                "name": self._name,
-                "epic": self._epic,
-                "resolution": self._candle_res,
-                "shape": new_candle.shape,
-                "data": (volume, spread, sentiment)
-            })
+            self.log(
+                pprint.pformat({
+                    "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
+                    "name": self._name,
+                    "epic": self._epic,
+                    "resolution": self._candle_res,
+                    "shape": new_candle.shape,
+                    "data": (volume, spread, sentiment)
+                })
+            )
 
         self._candles.append(new_candle)
 
