@@ -110,7 +110,7 @@ class Candle(object):
         spread = "AVERAGE_SPREAD"
         if self._spread_size > spread_mean + spread_std:
             spread = "WIDE_SPREAD"
-        elif self._spread_size <= spread_mean - spread_std:
+        elif self._spread_size <= spread_mean - 0.5 * spread_std:
             spread = "NARROW_SPREAD"
 
         return (volume, spread, self._type)
