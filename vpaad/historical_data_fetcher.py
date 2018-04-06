@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 
 from vpaad.constants import (
-    START_TIME_MULIPLIER, DATETIME_STR_FORMAT, DF_DATETIME_FORMAT)
+    START_TIME_MULIPLIER, DATETIME_STR_FORMAT, DF_DATETIME_FORMAT,
+    HISTORICAL_RES_TO_TIMEDELTA)
 
 
 def condense_historic_data(df):
@@ -56,18 +57,11 @@ class InterpolatedHistoricalDataFetcher(IHistoricalDataFetcher):
             spread_params["mean"], spread_params["std"], START_TIME_MULIPLIER)
 
         df = pd.DataFrame()
-        df["AbsSpread"] = spread_a.tolist()
-        df["Volume"] = volume_a.tolist()
 
-        # These are irrelevant
-        df["Open"] = range(START_TIME_MULIPLIER)
-        df["Close"] = range(START_TIME_MULIPLIER)
-        df["High"] = range(START_TIME_MULIPLIER)
-        df["Low"] = range(START_TIME_MULIPLIER)
-
+        td = HISTORICAL_RES_TO_TIMEDELTA[resolution]
         mock_times = [
             datetime.datetime.strptime(start_time, DATETIME_STR_FORMAT) +
-            datetime.timedelta * i for i in range(START_TIME_MULIPLIER)
+            td * i for i in range(START_TIME_MULIPLIER)
         ]
 
         mock_times = [
@@ -75,4 +69,14 @@ class InterpolatedHistoricalDataFetcher(IHistoricalDataFetcher):
         ]
 
         df["Time"] = mock_times
+        df.set_index("Time", inplace=True)
+
+        df["AbsSpread"] = spread_a.tolist()
+        df["Volume"] = volume_a.tolist()
+
+        # These are irrelevant
+        df["Open"] = [0 for _ in range(START_TIME_MULIPLIER)]
+        df["Close"] = [0 for _ in range(START_TIME_MULIPLIER)]
+        df["High"] = [0 for _ in range(START_TIME_MULIPLIER)]
+        df["Low"] = [0 for _ in range(START_TIME_MULIPLIER)]
         return df
