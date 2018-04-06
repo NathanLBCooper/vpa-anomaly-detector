@@ -97,7 +97,8 @@ def subscribe_to_interesting_items(ig_service, ig_stream_service):
         name = event["name"]
         if values["CONS_END"] == u"1":
             # Only add completed candles
-            return volume_trackers[name].add_candle(values)
+            return volume_trackers[name].add_candle(
+                values, notify_on_condition=True)
 
     # Making a new Subscription in MERGE mode
     subscription_prices = Subscription(
@@ -356,7 +357,7 @@ class VolumeTracker(object):
         self._volume_stats = (np.mean(v_npa), np.std(v_npa))
         self._candle_spread_stats = (np.mean(s_npa), np.std(s_npa))
 
-    def add_candle(self, candle_data):
+    def add_candle(self, candle_data, notify_on_condition=False):
         """Add a candle to this volume tracker"""
         new_candle = Candle(candle_data)
         self._update_stats(new_candle)
