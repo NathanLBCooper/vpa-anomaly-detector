@@ -24,6 +24,10 @@ class Emailer(object):
         self._queue = Queue()
         self._queue_lock = threading.Lock()
 
+        LOGGER.info(
+            "Created e-mailer with address: %s and username: %s",
+            self._from, self._username)
+
     def _send_email(self, summary, content):
         from_address = self._from
         to_address = self._recipients
@@ -60,8 +64,7 @@ class Emailer(object):
         while self._running:
             try:
                 with self._queue_lock:
-                    new_email = self._queue.get_nowait()
-                summary, content = new_email
+                    summary, content = self._queue.get_nowait()
                 self._send_email(summary, content)
             except Empty:
                 pass

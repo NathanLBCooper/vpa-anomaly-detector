@@ -18,6 +18,15 @@ set_up_logging()
 LOGGER = logging.getLogger("vpaad")
 
 
+def create_emailer(notification_config, send_emails):
+    if send_emails:
+        print("Please enter your e-mail account's password.")
+        password = getpass()
+        return Emailer(notification_config, password)
+    else:
+        return None
+
+
 @click.group()
 def cli():
     pass
@@ -77,20 +86,19 @@ def monitor(config, real_history, send_emails):
     account_id = ig.verify_stream_service_account(
         ig_stream_service, credentials)
 
-    if send_emails:
-        print("Please enter your e-mail account's password.")
-        password = getpass()
-        emailer = Emailer(notification_config, password)
-    else:
-        emailer = None
-
+    emailer = create_emailer(notification_config, send_emails)
     try:
         # Connect to account
         ig_stream_service.connect(account_id)
         historical_data_fetcher = create_historical_data_fetcher(
             interpolated_hd_params, ig_service, real_history)
+        callbacks = () if emailer is None else (emailer.add_email_to_queue,)
         add_volume_trackers(
-            ig_service, ig_stream_service, markets, historical_data_fetcher)
+            ig_service,
+            ig_stream_service,
+            markets,
+            historical_data_fetcher,
+            notification_callbacks=callbacks)
 
         if emailer:
             emailer.start()

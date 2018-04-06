@@ -19,7 +19,9 @@ class VolumeTracker(object):
     """
     Class tracks volume for a given item.
     """
-    def __init__(self, name, item, ig_service, historical_data_fetcher):
+    def __init__(
+            self, name, item, ig_service,
+            historical_data_fetcher, notification_callbacks=()):
         self._name = name
         _stream_type, epic, resolution = item.split(":")
 
@@ -40,6 +42,7 @@ class VolumeTracker(object):
         self._candle_spread_stats = None
 
         self._log_prefix = "VT:{}".format(self._name)
+        self._notification_callbacks = notification_callbacks
 
     def log(self, msg, *args):
         LOGGER.info(" ".join((self._log_prefix, msg)), *args)
@@ -126,26 +129,46 @@ class VolumeTracker(object):
         self._volume_stats = (np.mean(v_npa), np.std(v_npa))
         self._candle_spread_stats = (np.mean(s_npa), np.std(s_npa))
 
+    def _notify_callbacks(self, relative_data, full_details):
+        """
+        Notify callbacks with candle data
+        """
+        if not self._notification_callbacks:
+            return
+
+        summary = ", ".join(
+            self._name,
+            self._shape["shape_type"],
+            relative_data
+        )
+        content = (
+            "VPAAD has detected an anomaly candle in: {}.\n\n"
+            "{}"
+        ).format(self._name, full_details)
+        for cb in self._notification_callbacks:
+            cb(summary, content)
+
     def add_candle(self, candle_data, notify_on_condition=False):
         """Add a candle to this volume tracker"""
         new_candle = Candle(candle_data)
         self._update_stats(new_candle)
 
-        volume, spread, sentiment = new_candle.get_spread_volume_weight(
+        relative_data = new_candle.get_spread_volume_weight(
             self._volume_stats, self._candle_spread_stats)
+        volume, spread, sentiment = relative_data
 
         if (volume == "HIGH_VOLUME"
                 and new_candle.shape["shape_type"] != "AVERAGE_SHAPE"):
-            self.log(
-                pprint.pformat({
-                    "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
-                    "name": self._name,
-                    "epic": self._epic,
-                    "resolution": self._candle_res,
-                    "shape": new_candle.shape,
-                    "data": (volume, spread, sentiment)
-                })
-            )
+            full_details = pprint.pformat({
+                "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
+                "name": self._name,
+                "epic": self._epic,
+                "resolution": self._candle_res,
+                "shape": new_candle.shape,
+                "relative_data": (volume, spread, sentiment)
+            })
+            self.log(full_details)
+            self._notify_callbacks(relative_data, full_details)
 
         self._candles.append(new_candle)
 
@@ -154,10 +177,16 @@ class VolumeTracker(object):
 
 
 def add_volume_trackers(
-        ig_service, ig_stream_service, markets, historical_data_fetcher):
+        ig_service, ig_stream_service, markets, historical_data_fetcher,
+        notification_callbacks):
+    """
+    Add Volume trackers to an IG stream session.
+    """
     volume_trackers = {}
     for name, item in markets.items():
-        vt = VolumeTracker(name, item, ig_service, historical_data_fetcher)
+        vt = VolumeTracker(
+            name, item, ig_service, historical_data_fetcher,
+            notification_callbacks)
         vt.initiate()
         volume_trackers[item] = vt
 
