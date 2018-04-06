@@ -7,8 +7,8 @@ import time
 from trading_ig import (IGService, IGStreamService)
 from trading_ig.lightstreamer import Subscription
 
-from constants import INTERESTING_ITEMS, INTERESTING_FIELDS
-from volume_tracker import VolumeTracker
+from vpaad.constants import INTERESTING_ITEMS, INTERESTING_FIELDS
+from vpaad.volume_tracker import VolumeTracker
 
 Config = collections.namedtuple(
     "Config",

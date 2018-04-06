@@ -7,10 +7,10 @@ import time
 import numpy as np
 import pandas as pd
 
-from constants import (
+from vpaad.constants import (
     CANDLE_RES_TO_TIMEDELTA, CANDLE_RES_TO_HISTORICAL_RES, DATETIME_STR_FORMAT,
     START_TIME_MULIPLIER)
-from candle import Candle
+from vpaad.candle import Candle
 
 
 def condense_historic_data(df):
