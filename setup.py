@@ -17,6 +17,6 @@ setup(
         'ig.com API and volume price analysis'
     ),
     entry_points={
-       'console_scripts': ['vpaad = vpaad.cli:cli']
+       'console_scripts': ['vpaad = vpaad.__main__:cli']
     }
 )
