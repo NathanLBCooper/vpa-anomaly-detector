@@ -1,0 +1,34 @@
+{
+    "credentials": {
+        "username": "your_username",
+	"api_key": "your_api_key",
+	"password": "your_password",
+	"acc_number": "your_account_number"
+    },
+    "markets": {
+        "Spot Gold (5M)": "CHART:CS.D.CFDGOLD.CFDGC.IP:5MINUTE",
+        "Spot Gold (15M)": "CHART:CS.D.CFDGOLD.CFDGC.IP:15MINUTE",
+        "Spot Gold (30M)": "CHART:CS.D.CFDGOLD.CFDGC.IP:30MINUTE",
+	"Spot Gold (1H)": "CHART:CS.D.CFDGOLD.CFDGC.IP:HOUR"
+    },
+    "interpolated_hd_params": {
+        "CS.D.CFDGOLD.CFDGC.IP": {
+            "5Min": {
+                "volume": {"mean": 0.0, "std": 0.0},
+                "spread": {"mean": 0.0, "std": 0.0}
+            },
+            "15Min": {
+                "volume": {"mean": 0.0, "std": 0.0},
+                "spread": {"mean": 0.0, "std": 0.0}
+            },
+            "30Min": {
+                "volume": {"mean": 0.0, "std": 0.0},
+                "spread": {"mean": 0.0, "std": 0.0}
+            },
+            "1H": {
+                "volume": {"mean": 0.0, "std": 0.0},
+                "spread": {"mean": 0.0, "std": 0.0}
+            }
+        }
+    }
+}
