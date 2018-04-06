@@ -94,7 +94,7 @@ class VolumeTracker(object):
             start_time.strftime(DATETIME_STR_FORMAT),
             now.strftime(DATETIME_STR_FORMAT)
         )
-        self._log_debug(str(df))
+        self.log_debug(str(df))
         self._initiate_volume_stats(df["Volume"])
         self._initiate_candle_spread_stats(df["AbsSpread"])
         self._add_candles_from_historic_data(df)
