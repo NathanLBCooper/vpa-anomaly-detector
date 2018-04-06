@@ -12,6 +12,14 @@ from vpaad.constants import (
 LOGGER = logging.getLogger(__name__)
 
 
+def create_historical_data_fetcher(
+        interpolated_hd_params, ig_service, real_history):
+    if real_history:
+        return RealHistoricalDataFetcher(ig_service)
+    else:
+        return InterpolatedHistoricalDataFetcher(interpolated_hd_params)
+
+
 def condense_historic_data(df):
     sub_df = df.iloc[:, df.columns.get_level_values(0) == "bid"]
     volume_df = df.iloc[:, df.columns.get_level_values(1) == 'Volume']

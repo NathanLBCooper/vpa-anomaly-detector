@@ -6,55 +6,14 @@ import time
 import traceback
 
 import click
-from trading_ig.lightstreamer import Subscription
 
-from vpaad.constants import INTERESTING_FIELDS
 from vpaad.configuration import set_up_logging
-from vpaad.volume_tracker import VolumeTracker
-from vpaad.historical_data_fetcher import (
-    RealHistoricalDataFetcher, InterpolatedHistoricalDataFetcher)
+from vpaad.historical_data_fetcher import create_historical_data_fetcher
+from vpaad.volume_tracker import add_volume_trackers
 from vpaad import ig
 
 set_up_logging()
 LOGGER = logging.getLogger("vpaad")
-
-
-def add_volume_trackers(
-        ig_service, ig_stream_service, markets, historical_data_fetcher):
-    volume_trackers = {}
-    for name, item in markets.items():
-        vt = VolumeTracker(name, item, ig_service, historical_data_fetcher)
-        vt.initiate()
-        volume_trackers[item] = vt
-
-    def add_candle_to_vt(event):
-        values = event["values"]
-        name = event["name"]
-        if values["CONS_END"] == u"1":
-            # Only add completed candles
-            return volume_trackers[name].add_candle(
-                values, notify_on_condition=True)
-
-    # Making a new Subscription in MERGE mode
-    subscription_prices = Subscription(
-        mode="MERGE",
-        items=markets.values(),
-        fields=INTERESTING_FIELDS,
-    )
-
-    # Adding the "on_price_update" function to Subscription
-    subscription_prices.addlistener(add_candle_to_vt)
-
-    # Registering the Subscription
-    ig_stream_service.ls_client.subscribe(subscription_prices)
-
-
-def historical_data_fetcher_factory(
-        interpolated_hd_params, ig_service, real_history):
-    if real_history:
-        return RealHistoricalDataFetcher(ig_service)
-    else:
-        return InterpolatedHistoricalDataFetcher(interpolated_hd_params)
 
 
 @click.group()
@@ -114,7 +73,7 @@ def monitor(config, real_history):
     try:
         # Connect to account
         ig_stream_service.connect(account_id)
-        historical_data_fetcher = historical_data_fetcher_factory(
+        historical_data_fetcher = create_historical_data_fetcher(
             interpolated_hd_params, ig_service, real_history)
         add_volume_trackers(
             ig_service, ig_stream_service, markets, historical_data_fetcher)

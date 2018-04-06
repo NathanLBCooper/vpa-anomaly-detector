@@ -5,10 +5,11 @@ import pprint
 import time
 
 import numpy as np
+from trading_ig.lightstreamer import Subscription
 
 from vpaad.constants import (
     CANDLE_RES_TO_TIMEDELTA, CANDLE_RES_TO_HISTORICAL_RES, DATETIME_STR_FORMAT,
-    START_TIME_MULIPLIER, DF_DATETIME_FORMAT)
+    START_TIME_MULIPLIER, DF_DATETIME_FORMAT, INTERESTING_FIELDS)
 from vpaad.candle import Candle
 
 LOGGER = logging.getLogger(__name__)
@@ -149,3 +150,33 @@ class VolumeTracker(object):
 
         if len(self._candles) > START_TIME_MULIPLIER:
             self._candles.pop(0)
+
+
+def add_volume_trackers(
+        ig_service, ig_stream_service, markets, historical_data_fetcher):
+    volume_trackers = {}
+    for name, item in markets.items():
+        vt = VolumeTracker(name, item, ig_service, historical_data_fetcher)
+        vt.initiate()
+        volume_trackers[item] = vt
+
+    def add_candle_to_vt(event):
+        values = event["values"]
+        name = event["name"]
+        if values["CONS_END"] == u"1":
+            # Only add completed candles
+            return volume_trackers[name].add_candle(
+                values, notify_on_condition=True)
+
+    # Making a new Subscription in MERGE mode
+    subscription_prices = Subscription(
+        mode="MERGE",
+        items=markets.values(),
+        fields=INTERESTING_FIELDS,
+    )
+
+    # Adding the "on_price_update" function to Subscription
+    subscription_prices.addlistener(add_candle_to_vt)
+
+    # Registering the Subscription
+    ig_stream_service.ls_client.subscribe(subscription_prices)
