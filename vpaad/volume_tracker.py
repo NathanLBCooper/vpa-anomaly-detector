@@ -129,18 +129,18 @@ class VolumeTracker(object):
         self._volume_stats = (np.mean(v_npa), np.std(v_npa))
         self._candle_spread_stats = (np.mean(s_npa), np.std(s_npa))
 
-    def _notify_callbacks(self, relative_data, full_details):
+    def _notify_callbacks(self, candle, relative_data, full_details):
         """
         Notify callbacks with candle data
         """
         if not self._notification_callbacks:
             return
 
-        summary = ", ".join(
+        summary = ", ".join((
             self._name,
-            self._shape["shape_type"],
-            relative_data
-        )
+            candle.shape["shape_type"],
+            str(relative_data)
+        ))
         content = (
             "VPAAD has detected an anomaly candle in: {}.\n\n"
             "{}"
@@ -157,6 +157,11 @@ class VolumeTracker(object):
             self._volume_stats, self._candle_spread_stats)
         volume, spread, sentiment = relative_data
 
+        self._candles.append(new_candle)
+
+        if len(self._candles) > START_TIME_MULIPLIER:
+            self._candles.pop(0)
+
         if (volume == "HIGH_VOLUME"
                 and new_candle.shape["shape_type"] != "AVERAGE_SHAPE"):
             full_details = pprint.pformat({
@@ -168,12 +173,9 @@ class VolumeTracker(object):
                 "relative_data": (volume, spread, sentiment)
             })
             self.log(full_details)
-            self._notify_callbacks(relative_data, full_details)
 
-        self._candles.append(new_candle)
-
-        if len(self._candles) > START_TIME_MULIPLIER:
-            self._candles.pop(0)
+            if notify_on_condition:
+                self._notify_callbacks(new_candle, relative_data, full_details)
 
 
 def add_volume_trackers(
