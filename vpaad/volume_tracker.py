@@ -134,7 +134,8 @@ class VolumeTracker(object):
         volume, spread, sentiment = new_candle.get_spread_volume_weight(
             self._volume_stats, self._candle_spread_stats)
 
-        if volume == "HIGH_VOLUME":
+        if (volume == "HIGH_VOLUME"
+                and new_candle.shape["shape_type"] != "AVERAGE_SHAPE"):
             self.log(
                 pprint.pformat({
                     "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
