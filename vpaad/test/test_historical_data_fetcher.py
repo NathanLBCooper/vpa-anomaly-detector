@@ -34,14 +34,15 @@ def test_interpolated_hdf():
 
     described_df = df.describe()
 
-    assert described_df["AbsSpread"]["mean"] < spread_mean + 1.0
-    assert described_df["AbsSpread"]["mean"] > spread_mean - 1.0
+    epsilon = 1.5
+    assert described_df["AbsSpread"]["mean"] < spread_mean + epsilon
+    assert described_df["AbsSpread"]["mean"] > spread_mean - epsilon
 
-    assert described_df["Volume"]["mean"] < volume_mean + 1.0
-    assert described_df["Volume"]["mean"] > volume_mean - 1.0
+    assert described_df["Volume"]["mean"] < volume_mean + epsilon
+    assert described_df["Volume"]["mean"] > volume_mean - epsilon
 
-    assert described_df["Volume"]["std"] < volume_std + 1.0
-    assert described_df["Volume"]["std"] > volume_std - 1.0
+    assert described_df["Volume"]["std"] < volume_std + epsilon
+    assert described_df["Volume"]["std"] > volume_std - epsilon
 
-    assert described_df["AbsSpread"]["std"] < spread_std + 1.0
-    assert described_df["AbsSpread"]["std"] > spread_std - 1.0
+    assert described_df["AbsSpread"]["std"] < spread_std + epsilon
+    assert described_df["AbsSpread"]["std"] > spread_std - epsilon
