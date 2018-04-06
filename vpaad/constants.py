@@ -1,8 +1,7 @@
-# !/usr/bin/env python
 # -*- coding:utf-8 -*-
 import datetime
 
-START_TIME_MULIPLIER = 48
+START_TIME_MULIPLIER = 72
 INTERESTING_FIELDS = [
     "OFR_OPEN", "OFR_CLOSE", "OFR_LOW", "OFR_HIGH", "BID_OPEN",
     "BID_CLOSE", "BID_LOW", "BID_HIGH", "CONS_END", "CONS_TICK_COUNT",
