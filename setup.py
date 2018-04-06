@@ -16,5 +16,8 @@ setup(
     description=(
         'Experimental tool for detect anomalies in markets using the '
         'ig.com API and volume price analysis'
-    )
+    ),
+    entry_points={
+       'console_scripts': ['vpaad = vpaad.cli:main']
+    }
 )
