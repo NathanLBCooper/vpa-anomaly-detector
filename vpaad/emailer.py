@@ -3,7 +3,7 @@ import logging
 import smtplib
 import threading
 import time
-import Queue
+from Queue import Queue
 
 LOGGER = logging.getLogger(__name__)
 
@@ -13,10 +13,10 @@ class Emailer(object):
     An instance that sits in its own thread and sends emails when they
     are available in the queue.
     """
-    def __init__(self, from_email_credentials, password, recipients):
-        self._from = from_email_credentials["email_address"]
-        self._recipients = recipients
-        self._username = from_email_credentials["username"]
+    def __init__(self, notification_config, password):
+        self._from = notification_config["email_address"]
+        self._recipients = notification_config["recipients"]
+        self._username = notification_config["username"]
         self._password = password
 
         self._emailer_thread = None
@@ -47,6 +47,7 @@ class Emailer(object):
     def start(self):
         self._running = True
         self._emailer_thread = threading.Thread(target=self._run)
+        self._emailer_thread.start()
 
     def stop(self):
         if self._emailer_thread is not None:
