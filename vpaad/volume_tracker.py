@@ -61,9 +61,9 @@ class VolumeTracker(object):
         self._volume_stats = (mean, std)
         self._volumes = vol_series.tolist()
 
-        self.log_debug("Mean Volume: %s", mean)
-        self.log_debug("Volume Standard Deviation: %s", std)
-        self.log_debug("Anomaly Volume Threshold: %s", mean + std)
+        self.log("Mean Volume: %s", mean)
+        self.log("Volume Standard Deviation: %s", std)
+        self.log("Anomaly Volume Threshold: %s", mean + std)
 
     def _initiate_candle_spread_stats(self, spread_series):
         desc = spread_series.describe()
@@ -73,20 +73,20 @@ class VolumeTracker(object):
         self._candle_spread_stats = (mean, std)
         self._candle_spreads = spread_series.tolist()
 
-        self.log_debug("Mean Spread: %s", mean)
-        self.log_debug("Spread Standard Deviation: %s", std)
-        self.log_debug("Anomaly Spread Threshold: %s", mean + std)
+        self.log("Mean Spread: %s", mean)
+        self.log("Spread Standard Deviation: %s", std)
+        self.log("Anomaly Spread Threshold: %s", mean + std)
 
     def initiate(self):
         """
         Populate average volume from historical price data
         """
-        self.log_debug("Initiating")
+        self.log("Initiating")
 
         now = datetime.datetime.now()
         start_time = now - self._timedelta * START_TIME_MULIPLIER
 
-        self.log_debug("Start time: %s, End time: %s", start_time, now)
+        self.log("Start time: %s, End time: %s", start_time, now)
 
         df = self._historical_data_fetcher.fetch(
             self._epic,
@@ -164,20 +164,23 @@ class VolumeTracker(object):
             self._candles.pop(0)
 
         notable_shapes = ("STRONG_HAMMER", "STRONG_SHOOTING_STAR")
+        full_details = pprint.pformat({
+            "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
+            "name": self._name,
+            "epic": self._epic,
+            "resolution": self._candle_res,
+            "shape": new_candle.shape,
+            "relative_data": (volume, spread, sentiment)
+        })
         if (volume == "HIGH_VOLUME"
                 and new_candle.shape["shape_type"] in notable_shapes):
-            full_details = pprint.pformat({
-                "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
-                "name": self._name,
-                "epic": self._epic,
-                "resolution": self._candle_res,
-                "shape": new_candle.shape,
-                "relative_data": (volume, spread, sentiment)
-            })
             self.log(full_details)
 
             if notify_on_condition:
-                self._notify_callbacks(new_candle, relative_data, full_details)
+                self._notify_callbacks(
+                    new_candle, relative_data, full_details)
+        else:
+            self.log_debug(full_details)
 
 
 def add_volume_trackers(

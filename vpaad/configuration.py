@@ -6,7 +6,6 @@ from vpaad.constants import LOG_FILE_DATETIME_FORMAT
 
 
 def set_up_logging():
-    logging.basicConfig()
     logger = logging.getLogger('vpaad')
     logger.setLevel(logging.DEBUG)
 
