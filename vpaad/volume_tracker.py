@@ -149,7 +149,7 @@ class VolumeTracker(object):
         for cb in self._notification_callbacks:
             cb(summary, content)
 
-    def add_candle(self, candle_data, notify_on_condition=False):
+    def add_candle(self, candle_data, notify_on_anomaly=False):
         """Add a candle to this volume tracker"""
         new_candle = Candle(candle_data)
         self._update_stats(new_candle)
@@ -172,11 +172,23 @@ class VolumeTracker(object):
             "shape": new_candle.shape,
             "relative_data": (volume, spread, sentiment)
         })
+
+        is_anomaly = False
+
         if (volume == "HIGH_VOLUME"
                 and new_candle.shape["shape_type"] in notable_shapes):
+            # High volume hammers and shooting stars are the most
+            # useful VPA signals.
+            is_anomaly = True
+        elif volume != "HIGH_VOLUME" and spread == "WIDE_SPREAD":
+            # If the volume isn't high, but the spread is wide,
+            # it is possibly not a legitimate price action.
+            is_anomaly = True
+
+        if is_anomaly:
             self.log(full_details)
 
-            if notify_on_condition:
+            if notify_on_anomaly:
                 self._notify_callbacks(
                     new_candle, relative_data, full_details)
         else:
@@ -203,7 +215,7 @@ def add_volume_trackers(
         if values["CONS_END"] == u"1":
             # Only add completed candles
             return volume_trackers[name].add_candle(
-                values, notify_on_condition=True)
+                values, notify_on_anomaly=True)
 
     # Making a new Subscription in MERGE mode
     subscription_prices = Subscription(
