@@ -169,8 +169,8 @@ class VolumeTracker(object):
             "name": self._name,
             "epic": self._epic,
             "resolution": self._candle_res,
-            "shape": new_candle.shape,
-            "relative_data": (volume, spread, sentiment)
+            "relative_data": (volume, spread, sentiment),
+            "data": new_candle.data,
         })
 
         is_anomaly = False

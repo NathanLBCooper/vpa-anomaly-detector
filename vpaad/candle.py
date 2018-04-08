@@ -84,6 +84,18 @@ class Candle(object):
         return (volume, spread, self._type)
 
     @property
+    def data(self):
+        return {
+            "high": self._bid_high,
+            "low": self._bid_low,
+            "open": self._bid_open,
+            "close": self._bid_close,
+            "volume": self._volume,
+            "spread": self._spread,
+            "spread_size": self._spread_size,
+        }
+
+    @property
     def shape(self):
         return self._shape
 
