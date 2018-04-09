@@ -180,10 +180,10 @@ class VolumeTracker(object):
             # High volume hammers and shooting stars are the most
             # useful VPA signals.
             is_anomaly = True
-        elif volume != "HIGH_VOLUME" and spread == "WIDE_SPREAD":
-            # If the volume isn't high, but the spread is wide,
-            # it is possibly not a legitimate price action.
-            is_anomaly = True
+        # elif volume != "HIGH_VOLUME" and spread == "WIDE_SPREAD":
+        #     # If the volume isn't high, but the spread is wide,
+        #     # it is possibly not a legitimate price action.
+        #     is_anomaly = True
 
         if is_anomaly:
             self.log(full_details)
