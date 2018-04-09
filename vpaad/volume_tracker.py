@@ -21,8 +21,10 @@ class VolumeTracker(object):
     """
     def __init__(
             self, name, item, ig_service,
-            historical_data_fetcher, notification_callbacks=()):
+            historical_data_fetcher, notification_callbacks=(),
+            pre_calculate=True):
         self._name = name
+        self._pre_calculate = pre_calculate
         _stream_type, epic, resolution = item.split(":")
 
         self._epic = epic
@@ -35,10 +37,10 @@ class VolumeTracker(object):
 
         self._candles = []
 
-        self._volumes = None
+        self._volumes = []
         self._volume_stats = None
 
-        self._candle_spreads = None
+        self._candle_spreads = []
         self._candle_spread_stats = None
 
         self._log_prefix = "VT:{}".format(self._name)
@@ -83,6 +85,10 @@ class VolumeTracker(object):
         """
         self.log("Initiating")
 
+        if not self._pre_calculate:
+            self.log("Not pre-calculating stats, as specified")
+            return
+
         now = datetime.datetime.now()
         start_time = now - self._timedelta * START_TIME_MULIPLIER
 
@@ -122,8 +128,11 @@ class VolumeTracker(object):
         # Add new data, remove oldest
         self._volumes.append(new_candle.volume)
         self._candle_spreads.append(new_candle.spread_size)
-        self._volumes.pop(0)
-        self._candle_spreads.pop(0)
+
+        if len(self._volumes) > START_TIME_MULIPLIER:
+            self._volumes.pop(0)
+        if len(self._candle_spreads) > START_TIME_MULIPLIER:
+            self._candle_spreads.pop(0)
 
         v_npa = np.array(self._volumes)
         s_npa = np.array(self._candle_spreads)
@@ -163,7 +172,6 @@ class VolumeTracker(object):
         if len(self._candles) > START_TIME_MULIPLIER:
             self._candles.pop(0)
 
-        notable_shapes = ("STRONG_HAMMER", "STRONG_SHOOTING_STAR")
         full_details = pprint.pformat({
             "time": new_candle.time.strftime(DATETIME_STR_FORMAT),
             "name": self._name,
@@ -171,19 +179,17 @@ class VolumeTracker(object):
             "resolution": self._candle_res,
             "relative_data": (volume, spread, sentiment),
             "data": new_candle.data,
+            "overall_volume_stats": self._volume_stats,
+            "overall_spread_stats": self._candle_spread_stats
         })
 
         is_anomaly = False
-
+        notable_shapes = ("STRONG_HAMMER", "STRONG_SHOOTING_STAR")
         if (volume == "HIGH_VOLUME"
                 and new_candle.shape["shape_type"] in notable_shapes):
             # High volume hammers and shooting stars are the most
             # useful VPA signals.
             is_anomaly = True
-        # elif volume != "HIGH_VOLUME" and spread == "WIDE_SPREAD":
-        #     # If the volume isn't high, but the spread is wide,
-        #     # it is possibly not a legitimate price action.
-        #     is_anomaly = True
 
         if is_anomaly:
             self.log(full_details)
@@ -197,7 +203,7 @@ class VolumeTracker(object):
 
 def add_volume_trackers(
         ig_service, ig_stream_service, markets, historical_data_fetcher,
-        notification_callbacks):
+        notification_callbacks, pre_calculate):
     """
     Add Volume trackers to an IG stream session.
     """
@@ -205,7 +211,8 @@ def add_volume_trackers(
     for name, item in markets.items():
         vt = VolumeTracker(
             name, item, ig_service, historical_data_fetcher,
-            notification_callbacks)
+            notification_callbacks=notification_callbacks,
+            pre_calculate=pre_calculate)
         vt.initiate()
         volume_trackers[item] = vt
 

@@ -68,7 +68,12 @@ def search(config, term):
     "--send-emails/--no-emails",
     default=False,
     help="When True, send e-mails when anomalies are detected in markets.")
-def monitor(config, rhistory, send_emails):
+@click.option(
+    "--pre/--no-pre",
+    default=True,
+    help="When True, pre-calculate thresholds before looking at new candles. "
+         "Otherwise, do it on the fly.")
+def monitor(config, rhistory, send_emails, pre):
     """
     Run the main VPA anomaly detection procedure.
     """
@@ -99,7 +104,8 @@ def monitor(config, rhistory, send_emails):
             ig_stream_service,
             markets,
             historical_data_fetcher,
-            notification_callbacks=callbacks)
+            callbacks,
+            pre)
 
         if emailer:
             emailer.start()
