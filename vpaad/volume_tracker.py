@@ -180,7 +180,8 @@ class VolumeTracker(object):
             "relative_data": (volume, spread, sentiment),
             "data": new_candle.data,
             "overall_volume_stats": self._volume_stats,
-            "overall_spread_stats": self._candle_spread_stats
+            "overall_spread_stats": self._candle_spread_stats,
+            "shape": new_candle.shape
         })
 
         is_anomaly = False
