@@ -148,6 +148,7 @@ class VolumeTracker(object):
 
         summary = ", ".join((
             self._name,
+            candle.time.strftime(DATETIME_STR_FORMAT),
             candle.shape["shape_type"],
             str(relative_data)
         ))
