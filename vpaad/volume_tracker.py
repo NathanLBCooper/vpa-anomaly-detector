@@ -193,6 +193,7 @@ class VolumeTracker(object):
             is_anomaly = True
 
         if is_anomaly:
+            self.log("Anomaly detected")
             self.log(full_details)
 
             if notify_on_anomaly:
