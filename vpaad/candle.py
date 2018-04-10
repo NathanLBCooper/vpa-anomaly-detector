@@ -40,7 +40,7 @@ class Candle(object):
             upper_wick_length = self._bid_high - self._bid_open
             lower_wick_length = self._bid_close - self._bid_low
 
-        candle_height = max(self._bid_high - self._bid_low, 0.1)
+        candle_height = max(self._bid_high - self._bid_low, 0.0000001)
         upper_wick_percentage = upper_wick_length / candle_height
         lower_wick_percentage = lower_wick_length / candle_height
 
@@ -51,7 +51,7 @@ class Candle(object):
         elif lower_wick_percentage > 0.75:
             shape_name = "STRONG_HAMMER"
         elif lower_wick_percentage > 0.4 and upper_wick_percentage < 0.3:
-            shape_name = "WEAK HAMMER"
+            shape_name = "WEAK_HAMMER"
         elif lower_wick_percentage > 0.4 and upper_wick_percentage > 0.4:
             shape_name = "LONG_LEGGED_DOJI"
         else:
