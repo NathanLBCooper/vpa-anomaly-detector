@@ -26,3 +26,10 @@ Then run:
 `vpaad`
 
 You can call `vpaad --help` for more info.
+
+Tests
+-----
+
+Unit tests can be run by running pytests at the top level directory:
+
+`pytest`
