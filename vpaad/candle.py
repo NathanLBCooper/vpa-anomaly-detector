@@ -13,10 +13,21 @@ class Candle(object):
         self._bid_open = float(candle_data["BID_OPEN"])
         self._bid_close = float(candle_data["BID_CLOSE"])
         self._volume = float(candle_data["CONS_TICK_COUNT"])
-        self._spread = self._bid_close - self._bid_open
-        self._spread_size = math.fabs(self._spread)
         self._time = datetime.datetime.fromtimestamp(
             int(candle_data["UTM"]) / 1000)
+
+        self._spread = None
+        self._spread_size = None
+        self._type = None
+        self._shape = None
+
+        self._calculate_spread()
+        self._calculate_shape()
+        self._complete = True
+
+    def _calculate_spread(self):
+        self._spread = self._bid_close - self._bid_open
+        self._spread_size = math.fabs(self._spread)
 
         if self._spread > 0:
             self._type = "BULLISH"
@@ -24,9 +35,6 @@ class Candle(object):
             self._type = "BEARISH"
         else:
             self._type = "NO_PRICE_CHANGE"
-
-        self._shape = None
-        self._calculate_shape()
 
     def _calculate_shape(self):
         """
@@ -93,6 +101,7 @@ class Candle(object):
             "volume": self._volume,
             "spread": self._spread,
             "spread_size": self._spread_size,
+            "spread_type": self._type,
         }
 
     @property
@@ -110,3 +119,59 @@ class Candle(object):
     @property
     def time(self):
         return self._time
+
+    @property
+    def complete(self):
+        return self._complete
+
+
+class CompositeCandle(Candle):
+    """
+    A candle made up of smaller 5 minute candles. For example, this could
+    be a 15 minute candle containing 3 x 5 minute candles.
+    """
+    def __init__(self, timedelta):
+        self._ratio = int(
+            timedelta.total_seconds() /
+            datetime.timedelta(minutes=5).total_seconds()
+        )
+        self._sub_candle_num = 0
+
+        self._bid_high = None
+        self._bid_low = None
+        self._bid_open = None
+        self._bid_close = None
+        self._volume = None
+        self._spread = None
+        self._spread_size = None
+        self._time = None
+        self._type = None
+        self._shape = None
+        self._complete = False
+
+    def add_5min_candle(self, candle_data):
+        if self._complete:
+            raise ValueError("Cannot add candle data to a complete candle.")
+
+        sub_candle = Candle(candle_data)
+
+        if self._sub_candle_num == 0:
+            self._bid_high = sub_candle._bid_high
+            self._bid_low = sub_candle._bid_low
+            self._bid_open = sub_candle._bid_open
+            self._bid_close = sub_candle._bid_close
+            self._volume = sub_candle._volume
+            self._time = sub_candle._time
+        else:
+            self._bid_high = max(self._bid_high, sub_candle._bid_high)
+            self._bid_low = min(self._bid_low, sub_candle._bid_low)
+            self._bid_close = sub_candle._bid_close
+            self._volume += sub_candle._volume
+
+        self._sub_candle_num += 1
+
+        if self._sub_candle_num == self._ratio:
+            # Complete the candle
+            self._calculate_spread()
+            self._calculate_shape()
+            self._complete = True

@@ -10,7 +10,7 @@ from trading_ig.lightstreamer import Subscription
 from vpaad.constants import (
     CANDLE_RES_TO_TIMEDELTA, CANDLE_RES_TO_HISTORICAL_RES, DATETIME_STR_FORMAT,
     START_TIME_MULIPLIER, DF_DATETIME_FORMAT, INTERESTING_FIELDS)
-from vpaad.candle import Candle
+from vpaad.candle import Candle, CompositeCandle
 
 LOGGER = logging.getLogger(__name__)
 
@@ -20,12 +20,11 @@ class VolumeTracker(object):
     Class tracks volume for a given item.
     """
     def __init__(
-            self, name, item, ig_service,
+            self, name, epic, resolution, ig_service,
             historical_data_fetcher, notification_callbacks=(),
             pre_calculate=True):
         self._name = name
         self._pre_calculate = pre_calculate
-        _stream_type, epic, resolution = item.split(":")
 
         self._epic = epic
         self._candle_res = resolution
@@ -37,14 +36,19 @@ class VolumeTracker(object):
 
         self._candles = []
 
+        # Only applies for resolutions greater than 5MINUTE
+        self._current_composite_candle = None
+
         self._volumes = []
         self._volume_stats = None
 
         self._candle_spreads = []
         self._candle_spread_stats = None
 
-        self._log_prefix = "VT:{}".format(self._name)
+        self._log_prefix = "VT:{} ({})".format(self._name, self._candle_res)
         self._notification_callbacks = notification_callbacks
+
+        self._started = False
 
     def log(self, msg, *args):
         LOGGER.info(" ".join((self._log_prefix, msg)), *args)
@@ -118,7 +122,8 @@ class VolumeTracker(object):
                 "CONS_TICK_COUNT": row["Volume"],
                 "UTM": utm_time,
             }
-            self.add_candle(candle_data)
+            candle = Candle(candle_data)
+            self._add_candle(candle, notify_on_anomaly=False)
 
     def _update_stats(self, new_candle):
         """
@@ -159,9 +164,38 @@ class VolumeTracker(object):
         for cb in self._notification_callbacks:
             cb(summary, content)
 
-    def add_candle(self, candle_data, notify_on_anomaly=False):
+    def add_5min_candle(self, candle_data, notify_on_anomaly):
+        if not self._started:
+            minutes_in_hour = datetime.datetime.fromtimestamp(
+                int(candle_data["UTM"]) / 1000).minute
+            resolution_in_minutes = self._timedelta.total_seconds() / 60
+            if minutes_in_hour % resolution_in_minutes == 0:
+                self._started = True
+            else:
+                self.log(
+                    "Not starting VolumeTracker yet as time resolution has "
+                    "not been reached.")
+                return
+
+        if self._candle_res == "5MINUTE":
+            self._add_candle(Candle(candle_data), notify_on_anomaly)
+        else:
+            if self._current_composite_candle is None:
+                self._current_composite_candle = CompositeCandle(
+                    self._timedelta)
+
+            self._current_composite_candle.add_5min_candle(candle_data)
+            self.log_debug("Added data to sub candle.")
+
+            if self._current_composite_candle.complete:
+                self.log_debug("Composite candle completed.")
+                self._add_candle(
+                    self._current_composite_candle,
+                    notify_on_anomaly=notify_on_anomaly)
+                self._current_composite_candle = None
+
+    def _add_candle(self, new_candle, notify_on_anomaly=False):
         """Add a candle to this volume tracker"""
-        new_candle = Candle(candle_data)
         self._update_stats(new_candle)
 
         relative_data = new_candle.get_spread_volume_weight(
@@ -212,26 +246,37 @@ def add_volume_trackers(
     Add Volume trackers to an IG stream session.
     """
     volume_trackers = {}
-    for name, item in markets.items():
-        vt = VolumeTracker(
-            name, item, ig_service, historical_data_fetcher,
-            notification_callbacks=notification_callbacks,
-            pre_calculate=pre_calculate)
-        vt.initiate()
-        volume_trackers[item] = vt
+    for market in markets:
+        name = market["name"]
+        epic = market["epic"]
+        resolutions = market["resolutions"]
+        volume_trackers[epic] = [
+            VolumeTracker(
+                name, epic, resolution, ig_service, historical_data_fetcher,
+                notification_callbacks=notification_callbacks,
+                pre_calculate=pre_calculate)
+            for resolution in resolutions
+        ]
+        for vt in volume_trackers[epic]:
+            vt.initiate()
 
     def add_candle_to_vt(event):
         values = event["values"]
-        name = event["name"]
+        item = event["name"]
+        sub_type, epic, resolution = item.split(":")
         if values["CONS_END"] == u"1":
             # Only add completed candles
-            return volume_trackers[name].add_candle(
-                values, notify_on_anomaly=True)
+            for vt in volume_trackers[epic]:
+                vt.add_5min_candle(
+                    values, notify_on_anomaly=True)
 
     # Making a new Subscription in MERGE mode
     subscription_prices = Subscription(
         mode="MERGE",
-        items=markets.values(),
+        items=[
+            ":".join(("CHART", market["epic"], "5MINUTE"))
+            for market in markets
+        ],
         fields=INTERESTING_FIELDS,
     )
 
