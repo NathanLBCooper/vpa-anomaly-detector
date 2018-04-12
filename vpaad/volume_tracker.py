@@ -273,12 +273,14 @@ def add_volume_trackers(
                     values, notify_on_anomaly=True)
 
     # Making a new Subscription in MERGE mode
+    items = [
+        ":".join(("CHART", market["epic"], "5MINUTE"))
+        for market in markets
+    ]
+    LOGGER.info("Subscribing to: %s", items)
     subscription_prices = Subscription(
         mode="MERGE",
-        items=[
-            ":".join(("CHART", market["epic"], "5MINUTE"))
-            for market in markets
-        ],
+        items=items,
         fields=INTERESTING_FIELDS,
     )
 
