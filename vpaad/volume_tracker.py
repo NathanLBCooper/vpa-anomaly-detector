@@ -261,6 +261,7 @@ def add_volume_trackers(
             vt.initiate()
 
     def add_candle_to_vt(event):
+        LOGGER.debug("Received event: %s", pprint.pformat(event["name"]))
         values = event["values"]
         item = event["name"]
         sub_type, epic, resolution = item.split(":")
