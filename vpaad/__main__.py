@@ -14,7 +14,6 @@ from vpaad.volume_tracker import add_volume_trackers
 from vpaad import ig
 from vpaad.emailer import Emailer
 
-set_up_logging()
 LOGGER = logging.getLogger("vpaad")
 
 
@@ -73,10 +72,15 @@ def search(config, term):
     default=True,
     help="When True, pre-calculate thresholds before looking at new candles. "
          "Otherwise, do it on the fly.")
-def monitor(config, rhistory, send_emails, pre):
+@click.option(
+    "--debug/--no-debug",
+    default=False,
+    help="When set, log debug loggin to stdout")
+def monitor(config, rhistory, send_emails, pre, debug):
     """
     Run the main VPA anomaly detection procedure.
     """
+    set_up_logging(debug)
     cfg_json = {}
     with open(config, "r") as cfg_file:
         cfg_json = json.load(cfg_file)
