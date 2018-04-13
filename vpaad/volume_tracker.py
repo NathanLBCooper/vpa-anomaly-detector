@@ -269,8 +269,13 @@ def add_volume_trackers(
         if values["CONS_END"] == u"1":
             # Only add completed candles
             for vt in volume_trackers[epic]:
-                vt.add_5min_candle(
-                    values, notify_on_anomaly=True)
+                try:
+                    vt.add_5min_candle(
+                        values, notify_on_anomaly=True)
+                except ValueError:
+                    LOGGER.error(
+                        "Could not add candle data for %s: %s",
+                        item, values)
 
     # Making a new Subscription in MERGE mode
     items = [
