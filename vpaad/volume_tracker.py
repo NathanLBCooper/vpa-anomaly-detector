@@ -223,7 +223,6 @@ class VolumeTracker(object):
         is_anomaly = False
         notable_shapes = (
             "STRONG_HAMMER", "STRONG_SHOOTING_STAR",
-            "WEAK_HAMMER", "WEAK_SHOOTING_STAR"
         )
         if (volume == "HIGH_VOLUME"
                 and new_candle.shape["shape_type"] in notable_shapes):
